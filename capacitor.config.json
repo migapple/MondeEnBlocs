@@ -1,0 +1,26 @@
+{
+  "appId": "com.michel.garlandat.rosiersdumonde",
+  "appName": "Rosiers du Monde",
+  "webDir": "www/",
+  "bundledWebRuntime": false,
+  "backgroundColor": "##06060a",
+  "ios": {
+    "backgroundColor": "##06060a",
+    "contentInset": "automatic",
+    "scrollEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    },
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "Geolocation": {
+      "permissions": ["location"]
+    },
+    "server": {
+      "allowNavigation": ["nominatim.openstreetmap.org"]
+    }
+  }
+}

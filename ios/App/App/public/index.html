@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Le Monde en Blocs</title>
+<style>
+:root { --gold:#d4a935; --ink:#070510; --fs:1; }
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; user-select:none; }
+html,body { height:100%; overflow:hidden; background:var(--ink); }
+#app { position:fixed; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; background:var(--ink); overflow:hidden; font-family:'IM Fell English','Georgia',serif; }
+.screen { display:none; flex-direction:column; width:100%; height:100%; }
+.screen.active { display:flex; }
+
+/* ── HOME ── */
+#screen-home {
+  align-items:center; justify-content:center;
+  padding-top:calc(20px + env(safe-area-inset-top));
+  padding-bottom:calc(20px + env(safe-area-inset-bottom));
+  gap:0;
+}
+#home-title { font-size:calc(28px * var(--fs)); color:var(--gold); letter-spacing:0.06em; text-align:center; margin-bottom:4px; }
+#home-subtitle { font-size:calc(12px * var(--fs)); color:#666; letter-spacing:0.15em; text-transform:uppercase; text-align:center; margin-bottom:24px; }
+#home-preview { width:160px; height:200px; border:1px solid var(--gold); border-radius:8px; overflow:hidden; margin-bottom:24px; position:relative; }
+#home-preview canvas { width:100%; height:100%; }
+.home-btn { background:transparent; border:1px solid var(--gold); color:var(--gold); font-family:'IM Fell English',Georgia,serif; font-size:calc(16px * var(--fs)); letter-spacing:0.1em; padding:12px 40px; border-radius:4px; cursor:pointer; margin-bottom:10px; }
+.home-btn:active { background:rgba(212,169,53,0.1); }
+#home-best { font-size:calc(11px * var(--fs)); color:#555; text-align:center; margin-top:6px; letter-spacing:0.06em; }
+
+
+/* ── REGIONS ── */
+#screen-regions {
+  padding-top:calc(env(safe-area-inset-top) + 16px);
+  padding-bottom:calc(env(safe-area-inset-bottom) + 16px);
+  align-items:center;
+}
+#regions-title { font-size:calc(20px * var(--fs)); color:var(--gold); letter-spacing:0.06em; margin-bottom:6px; }
+#regions-sub { font-size:calc(11px * var(--fs)); color:#666; margin-bottom:24px; letter-spacing:0.1em; text-transform:uppercase; }
+#regions-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; width:90%; max-width:340px; }
+.region-btn {
+  background:rgba(212,169,53,0.05);
+  border:1px solid rgba(212,169,53,0.3);
+  border-radius:10px; padding:16px 10px;
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  cursor:pointer;
+}
+.region-btn:active { background:rgba(212,169,53,0.15); }
+.region-emoji { font-size:32px; }
+.region-name { font-size:calc(13px * var(--fs)); color:var(--gold); text-align:center; letter-spacing:0.05em; }
+.region-count { font-size:calc(10px * var(--fs)); color:#666; font-family:sans-serif; }
+#btn-back-home { margin-top:20px; background:transparent; border:0.5px solid #333; color:#666; font-family:'IM Fell English',Georgia,serif; font-size:calc(13px * var(--fs)); padding:8px 24px; border-radius:4px; cursor:pointer; }
+
+/* ── GAME ── */
+#screen-game { flex-direction:column; padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+#game-topbar { display:flex; align-items:center; justify-content:space-between; padding:0 8px; height:36px; flex-shrink:0; border-bottom:0.5px solid rgba(212,169,53,0.1); }
+#game-topbar-title { font-size:calc(13px * var(--fs)); color:var(--gold); letter-spacing:0.05em; }
+#topbar-btns { display:flex; gap:6px; }
+.top-btn { background:transparent; border:0.5px solid rgba(212,169,53,0.3); color:#888; font-size:calc(11px * var(--fs)); padding:4px 10px; border-radius:4px; cursor:pointer; font-family:sans-serif; }
+#game-body { display:flex; flex:1; overflow:hidden; }
+#game-left { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:8px 0 8px 8px; }
+#canvas-wrap { position:relative; flex-shrink:0; }
+#canvas { display:block; border-radius:6px; border:1px solid rgba(212,169,53,0.3); }
+#game-overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; border-radius:6px; background:rgba(7,5,16,0.90); }
+#ov-title { font-size:calc(17px * var(--fs)); color:var(--gold); text-align:center; }
+#ov-sub { font-size:calc(11px * var(--fs)); color:#888; text-align:center; padding:0 14px; line-height:1.6; }
+.ov-btn { background:transparent; border:1px solid var(--gold); color:var(--gold); font-family:'IM Fell English',Georgia,serif; font-size:calc(13px * var(--fs)); letter-spacing:0.08em; padding:9px 24px; border-radius:4px; cursor:pointer; margin-top:4px; }
+.ov-btn:active { background:rgba(212,169,53,0.12); }
+#victory-overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:none; flex-direction:column; align-items:flex-end; justify-content:flex-end; border-radius:6px; background:#070510; z-index:20; overflow:hidden; }
+#game-right { width:90px; display:flex; flex-direction:column; padding:8px; gap:8px; }
+@media (min-width:768px) { #game-right { width:130px; } }
+.panel { background:rgba(255,255,255,0.04); border:0.5px solid rgba(212,169,53,0.2); border-radius:6px; padding:8px 10px; }
+.panel-label { font-size:calc(9px * var(--fs)); color:#666; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px; font-family:sans-serif; }
+.panel-value { font-size:calc(20px * var(--fs)); color:var(--gold); }
+#next-canvas { width:70px; height:56px; background:var(--ink); border-radius:4px; display:block; }
+#mname { font-size:calc(10px * var(--fs)); color:var(--gold); margin-bottom:2px; line-height:1.3; }
+#mcountry { font-size:calc(9px * var(--fs)); color:#666; font-family:sans-serif; margin-bottom:4px; }
+#mprog-wrap { width:100%; height:3px; background:rgba(212,169,53,0.12); border-radius:2px; }
+#mprog { height:3px; background:var(--gold); border-radius:2px; width:0%; transition:width 0.3s; }
+#region-badge { font-size:calc(9px * var(--fs)); color:#555; font-family:sans-serif; margin-top:4px; }
+#game-bottom { width:100%; display:flex; flex-direction:column; align-items:center; gap:4px; padding:4px 0 calc(8px + env(safe-area-inset-bottom)) 0; flex-shrink:0; }
+#dpad-mid { display:flex; gap:4px; }
+.dkey { width:54px; height:46px; background:rgba(212,169,53,0.07); border:0.5px solid rgba(212,169,53,0.25); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:20px; cursor:pointer; color:var(--gold); }
+.dkey:active { background:rgba(212,169,53,0.18); }
+#btn-drop { width:54px; height:46px; background:rgba(212,169,53,0.07); border:0.5px solid rgba(212,169,53,0.25); border-radius:8px; font-size:18px; cursor:pointer; color:var(--gold); }
+#btn-drop:active { background:rgba(212,169,53,0.18); }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="app">
+
+<!-- HOME -->
+<div id="screen-home" class="screen active">
+  <div id="home-title">Le Monde en Blocs</div>
+  <div id="home-subtitle">en Blocs</div>
+  <div id="home-preview"><canvas id="preview-canvas"></canvas></div>
+  <button class="home-btn" id="btn-play">Jouer</button>
+  <button class="home-btn" style="font-size:calc(13px*var(--fs));padding:9px 32px;border-color:#444;color:#666;" id="btn-about">À propos</button>
+  <div id="home-best"></div>
+  <button id="btn-settings" style="background:transparent;border:0.5px solid #333;border-radius:20px;padding:6px 16px;font-size:14px;cursor:pointer;color:#666;margin-top:6px;">📱 Nos apps</button>
+  <button id="btn-lang" style="background:transparent;border:0.5px solid #444;border-radius:20px;padding:6px 16px;font-size:20px;cursor:pointer;margin-top:8px;">🇬🇧</button>
+
+</div>
+
+<!-- REGIONS -->
+<div id="screen-regions" class="screen">
+  <div id="regions-title">Choisir une région</div>
+  <div id="regions-sub">5 régions · 35 monuments</div>
+  <div id="regions-grid">
+    <div class="region-btn" data-region="0"><div class="region-emoji">🏛️</div><div class="region-name" id="rname-0">Europe</div><div class="region-count" id="rcount-0">7 monuments</div></div>
+    <div class="region-btn" data-region="1"><div class="region-emoji">🏯</div><div class="region-name" id="rname-1">Asie</div><div class="region-count" id="rcount-1">7 monuments</div></div>
+    <div class="region-btn" data-region="2"><div class="region-emoji">🗽</div><div class="region-name" id="rname-2">Amériques</div><div class="region-count" id="rcount-2">7 monuments</div></div>
+    <div class="region-btn" data-region="3"><div class="region-emoji">🌍</div><div class="region-name" id="rname-3">Afrique &amp; Océanie</div><div class="region-count" id="rcount-3">7 monuments</div></div>
+    <div class="region-btn" data-region="4" style="grid-column:1/-1;"><div class="region-emoji">🗼</div><div class="region-name" id="rname-4">Paris</div><div class="region-count" id="rcount-4">7 monuments</div></div>
+  </div>
+  <button id="btn-back-home">← Accueil</button>
+</div>
+
+<!-- GAME -->
+<div id="screen-game" class="screen">
+  <div id="game-topbar">
+    <div id="game-topbar-title">Le Monde en Blocs</div>
+    <div id="topbar-btns">
+      <button class="top-btn" id="btn-pause">Pause</button>
+      <button class="top-btn" id="btn-regions">Régions</button>
+    </div>
+  </div>
+  <div id="game-body">
+    <div id="game-left">
+      <div id="canvas-wrap">
+        <canvas id="canvas"></canvas>
+        <div id="game-overlay">
+          <div id="ov-title">Le Monde en Blocs</div>
+          <div id="ov-sub">Complétez les lignes pour révéler les monuments</div>
+          <button class="ov-btn" id="ov-btn-start">Commencer</button>
+        </div>
+        <div id="victory-overlay">
+          <img id="vimg" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;border-radius:6px;opacity:0;transition:opacity 0.5s;" src="">
+          <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(7,5,16,0.95));padding:16px;display:flex;flex-direction:column;gap:6px;">
+            <div id="vname" style="font-size:calc(18px * var(--fs));color:#d4a935;text-align:center;letter-spacing:0.06em;"></div>
+            <div id="vcountry" style="font-size:calc(11px * var(--fs));color:#aaa;font-family:sans-serif;text-align:center;"></div>
+            <div id="vfact" style="font-size:calc(10px * var(--fs));color:#b8a070;text-align:center;line-height:1.5;padding:0 8px;"></div>
+            <div id="vbar-wrap" style="width:100%;height:3px;background:rgba(212,169,53,0.15);border-radius:2px;overflow:hidden;margin-top:4px;"><div id="vbar" style="height:3px;background:#d4a935;width:0%;border-radius:2px;"></div></div>
+            <div id="vnext" style="font-size:calc(10px * var(--fs));color:#666;text-align:center;font-family:sans-serif;"></div>
+          </div>
+        </div>
+      </div>
+      <div id="game-bottom">
+        <div class="dkey" id="k-up">↻</div>
+        <div id="dpad-mid">
+          <div class="dkey" id="k-left">◀</div>
+          <div class="dkey" id="k-down">▼</div>
+          <div class="dkey" id="k-right">▶</div>
+        </div>
+        <button class="dkey" id="btn-drop">⬇</button>
+      </div>
+    </div>
+    <div id="game-right">
+      <div class="panel"><div class="panel-label">Score</div><div class="panel-value" id="score">0</div></div>
+      <div class="panel"><div class="panel-label">Niveau</div><div class="panel-value" id="level-val">1</div><div id="region-badge"></div></div>
+      <div class="panel"><div class="panel-label">Suivant</div><canvas id="next-canvas"></canvas></div>
+      <div class="panel">
+        <div class="panel-label">Monument</div>
+        <div id="mname">—</div>
+        <div id="mcountry"></div>
+        <div id="mprog-wrap"><div id="mprog"></div></div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- SETTINGS -->
+<div id="screen-settings" class="screen" style="padding-top:calc(14px + env(safe-area-inset-top));padding-bottom:calc(12px + env(safe-area-inset-bottom));padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);overflow-y:auto;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 12px 10px;">
+    <div style="font-size:18px;color:#d4a935;font-family:'IM Fell English',Georgia,serif;letter-spacing:0.05em;">Nos Applications</div>
+    <button id="btn-close-settings" style="background:transparent;border:0.5px solid #333;border-radius:16px;padding:5px 14px;font-size:12px;color:#888;cursor:pointer;">✕ Fermer</button>
+  </div>
+  <div id="settings-content" style="padding:0 10px;"></div>
+</div>
+
+</div>
+<script>
+// ── CONFIG ─────────────────────────────────────────────────────
+const IS_IPAD = Math.min(window.screen.width,window.screen.height)>=768;
+const COLS = IS_IPAD ? 12 : 10;
+const ROWS = IS_IPAD ? 24 : 20;
+let CELL = 18;
+
+function computeCell(){
+  const dpadH = IS_IPAD ? 180 : 170;
+  const availH = window.innerHeight - 36 - dpadH - 40;
+  const availW = window.innerWidth - (IS_IPAD?130:90) - 24;
+  return Math.floor(Math.min(availW/COLS, availH/ROWS));
+}
+
+// ── MONUMENTS ──────────────────────────────────────────────────
+const T = {
+  fr: {
+    appTitle: 'Le Monde en Blocs',
+    appSub: 'Monuments du monde',
+    play: 'Jouer',
+    about: 'À propos',
+    best: 'Meilleur',
+    chooseRegion: 'Choisir une région',
+    regionsSub: '5 régions · 35 monuments',
+    backHome: '← Accueil',
+    monuments: 'monuments',
+    pause: 'Pause',
+    resume: 'Reprendre',
+    regions: 'Régions',
+    next: 'Suivant',
+    score: 'Score',
+    level: 'Niveau',
+    monument: 'Monument',
+    nextIn: 'Monument suivant dans',
+    seconds: 's…',
+    gameOver: 'Fin de partie',
+    restart: 'Recommencer',
+    start: 'Commencer',
+    drop: '⬇',
+    aboutText: '35 monuments · 5 régions\nComplétez les lignes pour révéler les monuments du monde entier.\n\nDéveloppé par Michel Garlandat',
+    reveal: '7 monuments à révéler',
+    revealSub: 'Complétez les lignes pour découvrir chaque monument',
+  },
+  en: {
+    appTitle: 'World in Blocks',
+    appSub: 'World Monuments',
+    play: 'Play',
+    about: 'About',
+    best: 'Best',
+    chooseRegion: 'Choose a region',
+    regionsSub: '5 regions · 35 monuments',
+    backHome: '← Home',
+    monuments: 'monuments',
+    pause: 'Pause',
+    resume: 'Resume',
+    regions: 'Regions',
+    next: 'Next',
+    score: 'Score',
+    level: 'Level',
+    monument: 'Monument',
+    nextIn: 'Next monument in',
+    seconds: 's…',
+    gameOver: 'Game Over',
+    restart: 'Restart',
+    start: 'Start',
+    drop: '⬇',
+    aboutText: '35 monuments · 5 regions\nComplete lines to reveal world monuments.\n\nDeveloped by Michel Garlandat',
+    reveal: '7 monuments to reveal',
+    revealSub: 'Complete lines to discover each monument',
+  }
+};
+let lang = localStorage.getItem('mondblocs_lang') || 'fr';
+function t(k){ return T[lang][k] || T.fr[k]; }
+function applyLang(){
+  document.getElementById('home-title').textContent = t('appTitle');
+  document.getElementById('home-subtitle').textContent = t('appSub');
+  document.getElementById('btn-play').textContent = t('play');
+  document.getElementById('btn-about').textContent = t('about');
+  document.getElementById('regions-title').textContent = t('chooseRegion');
+  document.getElementById('regions-sub').textContent = t('regionsSub');
+  document.getElementById('btn-back-home').textContent = t('backHome');
+  document.getElementById('game-topbar-title').textContent = t('appTitle');
+  document.getElementById('btn-pause').textContent = t('pause');
+  document.getElementById('btn-regions').textContent = t('regions');
+  document.getElementById('btn-drop').textContent = t('drop');
+  // panel labels
+  document.querySelectorAll('.panel-label')[0].textContent = t('score');
+  document.querySelectorAll('.panel-label')[1].textContent = t('level');
+  document.querySelectorAll('.panel-label')[2].textContent = t('next');
+  document.querySelectorAll('.panel-label')[3].textContent = t('monument');
+  // region names
+  REGIONS.forEach((r,i)=>{
+    const el=document.getElementById('rname-'+i);
+    const ec=document.getElementById('rcount-'+i);
+    if(el) el.textContent=lang==='fr'?r.fr:r.en;
+    if(ec) ec.textContent='7 '+(lang==='fr'?'monuments':'monuments');
+  });
+  // lang button
+  document.getElementById('btn-lang').textContent = lang==='fr' ? '🇬🇧' : '🇫🇷';
+  if(bestScore>0) document.getElementById('home-best').textContent = t('best')+' : '+bestScore;
+}
+
+const REGIONS = [
+  { fr:'Europe',            en:'Europe',           emoji:'🏛️' },
+  { fr:'Asie',              en:'Asia',             emoji:'🏯' },
+  { fr:'Amériques',         en:'Americas',         emoji:'🗽' },
+  { fr:'Afrique & Océanie', en:'Africa & Oceania', emoji:'🌍' },
+  { fr:'Paris',             en:'Paris',            emoji:'🗼' },
+];
+
+const MONUMENTS = [
+  // Europe (0-6)
+  { region:0, name:'Tour Eiffel',      country:'France',      fact:'Construite en 1889 par Gustave Eiffel. 330 m, symbole de Paris et de la France.',         wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Tour_eiffel_at_sunrise_from_the_trocadero.jpg/500px-Tour_eiffel_at_sunrise_from_the_trocadero.jpg' },
+  { region:0, name:'Big Ben',          country:'Royaume-Uni', fact:'La tour de l\'horloge du Palais de Westminster à Londres, inaugurée en 1859.',             wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Clock_Tower_-_Palace_of_Westminster%2C_London_-_May_2007.jpg/500px-Clock_Tower_-_Palace_of_Westminster%2C_London_-_May_2007.jpg' },
+  { region:0, name:'Colisée',          country:'Italie',      fact:'Amphithéâtre romain construit au 1er siècle. Pouvait accueillir 50 000 spectateurs.',      wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Colosseo_2020.jpg/500px-Colosseo_2020.jpg' },
+  { region:0, name:'Sagrada Família',  country:'Espagne',     fact:'Basilique conçue par Antoni Gaudí à Barcelone, en construction depuis 1882.',              wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Sagrada_Familia_01.jpg/500px-Sagrada_Familia_01.jpg' },
+  { region:0, name:'Acropole',         country:'Grèce',       fact:'Citadelle antique d\'Athènes dominant la ville. Le Parthénon date du Ve siècle av. J.-C.',  wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/The_Parthenon_in_Athens.jpg/500px-The_Parthenon_in_Athens.jpg' },
+  { region:0, name:'Kremlin',          country:'Russie',      fact:'Forteresse médiévale au cœur de Moscou, siège du pouvoir russe depuis le XIVe siècle.',    wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Moscow_July_2011-8a.jpg/500px-Moscow_July_2011-8a.jpg' },
+  { region:0, name:'Atomium',          country:'Belgique',    fact:'Édifice bruxellois construit pour l\'Exposition universelle de 1958. Hauteur : 102 m.',     wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Atomium_Belgium_1.jpg/500px-Atomium_Belgium_1.jpg' },
+  // Asie (7-13)
+  { region:1, name:'Taj Mahal',        country:'Inde',        fact:'Mausolée en marbre blanc érigé par Shah Jahan en 1653. Patrimoine mondial de l\'UNESCO.',   wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Taj_Mahal%2C_Agra%2C_India_edit3.jpg/500px-Taj_Mahal%2C_Agra%2C_India_edit3.jpg' },
+  { region:1, name:'Grande Muraille',  country:'Chine',       fact:'Fortification de 21 000 km construite pour protéger la Chine des invasions.',               wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/The_Great_Wall_of_China_at_Jinshanling-edit.jpg/500px-The_Great_Wall_of_China_at_Jinshanling-edit.jpg' },
+  { region:1, name:'Angkor Wat',       country:'Cambodge',    fact:'Plus grand complexe religieux du monde, construit au XIIe siècle par les Khmers.',          wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Angkor_Wat_02.jpg/500px-Angkor_Wat_02.jpg' },
+  { region:1, name:'Mosquée de Dubaï',  country:'Émirats',     fact:'La grande mosquée de Jumeirah à Dubaï, chef-d\'œuvre de l\'architecture islamique moderne.',  wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Jumeirah_Mosque.jpg/500px-Jumeirah_Mosque.jpg' },
+  { region:1, name:'Mont Fuji',        country:'Japon',       fact:'Volcan sacré du Japon culminant à 3 776 m. Inscrit au patrimoine mondial en 2013.',         wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/080103_hakkai_fuji.jpg/500px-080103_hakkai_fuji.jpg' },
+  { region:1, name:'Petronas',         country:'Malaisie',    fact:'Tours jumelles de 452 m à Kuala Lumpur, les plus hautes du monde de 1998 à 2004.',          wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Petronas_twin_towers.jpg/500px-Petronas_twin_towers.jpg' },
+  { region:1, name:'Temple d\'Or',     country:'Inde',        fact:'Harmandir Sahib à Amritsar, temple sacré des Sikhs construit au XVIe siècle.',              wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Harmandir_Sahib%2C_Amritsar.jpg/500px-Harmandir_Sahib%2C_Amritsar.jpg' },
+  // Amériques (14-20)
+  { region:2, name:'Statue de la Liberté', country:'États-Unis', fact:'Offerte par la France en 1886. Haute de 93 m, elle symbolise la liberté et la démocratie.', wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Statue_of_Liberty_7.jpg/500px-Statue_of_Liberty_7.jpg' },
+  { region:2, name:'Machu Picchu',     country:'Pérou',       fact:'Cité inca perchée à 2 430 m d\'altitude, construite au XVe siècle. Redécouverte en 1911.',  wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Machu_Picchu%2C_Peru.jpg/500px-Machu_Picchu%2C_Peru.jpg' },
+  { region:2, name:'Christ Rédempteur',country:'Brésil',      fact:'Statue de 38 m dominant Rio de Janeiro depuis le Corcovado. Inaugurée en 1931.',            wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Cristo_Redentor_-_Rio_de_Janeiro%2C_Brasil.jpg/500px-Cristo_Redentor_-_Rio_de_Janeiro%2C_Brasil.jpg' },
+  { region:2, name:'Chichen Itza',     country:'Mexique',     fact:'Cité maya du Yucatán. La pyramide de Kukulcán est une des 7 nouvelles merveilles du monde.', wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Chichen_Itza_3.jpg/500px-Chichen_Itza_3.jpg' },
+  { region:2, name:'Empire State',     country:'États-Unis',  fact:'Gratte-ciel de 443 m à New York, symbole de la ville. Construit en seulement 410 jours.',   wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Empire_State_Building_%28aerial_view%29.jpg/500px-Empire_State_Building_%28aerial_view%29.jpg' },
+  { region:2, name:'Golden Gate',      country:'États-Unis',  fact:'Pont suspendu de 1 280 m à San Francisco, inauguré en 1937. Icône de la côte Ouest.',       wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/GoldenGateBridge-001.jpg/500px-GoldenGateBridge-001.jpg' },
+  { region:2, name:'Moai',             country:'Chili',       fact:'Statues monumentales de l\'île de Pâques sculptées entre 1250 et 1500 par les Rapa Nui.',   wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Moai_Rano_raraku.jpg/500px-Moai_Rano_raraku.jpg' },
+  // Afrique & Océanie (21-27)
+  { region:3, name:'Pyramides',        country:'Égypte',      fact:'Les pyramides de Gizeh, dont la Grande Pyramide de Khéops, seule merveille du monde antique encore debout.', wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Kheops-Pyramid.jpg/500px-Kheops-Pyramid.jpg' },
+  { region:3, name:'Sphinx',           country:'Égypte',      fact:'Statue colossale de 73 m de long gardant les pyramides de Gizeh depuis 4 500 ans.',          wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Great_Sphinx_of_Giza_-_20080716a.jpg/500px-Great_Sphinx_of_Giza_-_20080716a.jpg' },
+  { region:3, name:'Opéra de Sydney',  country:'Australie',   fact:'Chef-d\'œuvre architectural de Jørn Utzon inauguré en 1973. Inscrit au patrimoine mondial en 2007.', wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Sydney_Opera_House_-_Dec_2008.jpg/500px-Sydney_Opera_House_-_Dec_2008.jpg' },
+  { region:3, name:'Uluru',            country:'Australie',   fact:'Monolithe sacré des Anangu au cœur de l\'Australie. Haut de 348 m, il change de couleur au coucher du soleil.', wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Uluru_Australia.jpg/500px-Uluru_Australia.jpg' },
+  { region:3, name:'Kilimandjaro',     country:'Tanzanie',    fact:'Plus haut sommet d\'Afrique : 5 895 m. Volcan éteint au nord de la Tanzanie.',               wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Kilimanjaro_from_Amboseli.jpg/500px-Kilimanjaro_from_Amboseli.jpg' },
+  { region:3, name:'Chutes Victoria',  country:'Zimbabwe',    fact:'Plus grande chute d\'eau du monde en volume : 1 708 m de large, 108 m de haut.',             wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Victoria_Falls.jpg/500px-Victoria_Falls.jpg' },
+  { region:3, name:'Table Mountain',   country:'Afrique du Sud', fact:'Montagne emblématique du Cap, culminant à 1 086 m. L\'une des 7 nouvelles merveilles naturelles.', wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Table_Mountain_DanieVDM.jpg/500px-Table_Mountain_DanieVDM.jpg' },
+  // Paris (28-34)
+  { region:4, name:'Tour Eiffel',        country:'Paris', fact:'Construite par Gustave Eiffel en 1889. Haute de 330 m, 10 000 tonnes de fer.',               wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Tour_eiffel_at_sunrise_from_the_trocadero.jpg/500px-Tour_eiffel_at_sunrise_from_the_trocadero.jpg' },
+  { region:4, name:'Arc de Triomphe',    country:'Paris', fact:'Commandé par Napoléon en 1806. Haut de 50 m, il domine la place de l\'Étoile.',              wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Paris_Night.jpg/500px-Paris_Night.jpg' },
+  { region:4, name:'Notre-Dame',         country:'Paris', fact:'Chef-d\'œuvre gothique du XIIe siècle. Sa flèche restaurée réinaugurée en décembre 2024.',   wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/NotreDameDeParis.jpg/500px-NotreDameDeParis.jpg' },
+  { region:4, name:'Sacré-Cœur',         country:'Paris', fact:'Basilique romano-byzantine au sommet de Montmartre. Son dôme culmine à 83 m.',                wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Sacre_Coeur_cor_Jesu-DSC_1455w.jpg/500px-Sacre_Coeur_cor_Jesu-DSC_1455w.jpg' },
+  { region:4, name:'Panthéon',           country:'Paris', fact:'Mausolée des grands hommes depuis 1791. Victor Hugo, Voltaire et Marie Curie y reposent.',     wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Pantheon_wider_centered.jpg/500px-Pantheon_wider_centered.jpg' },
+  { region:4, name:'Pyramide du Louvre', country:'Paris', fact:'Conçue par I.M. Pei, inaugurée en 1989. Entrée principale du plus grand musée du monde.',     wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Louvre_Museum_Wikimedia_Commons.jpg/500px-Louvre_Museum_Wikimedia_Commons.jpg' },
+  { region:4, name:'Opéra Garnier',      country:'Paris', fact:'Inauguré en 1875 par Charles Garnier. Chef-d\'œuvre baroque du Second Empire, 2 200 places.', wt:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Paris_Opera_House%2C_Palais_Garnier_5-2013.jpeg/500px-Paris_Opera_House%2C_Palais_Garnier_5-2013.jpeg' },
+];
+
+// ── PIECES ─────────────────────────────────────────────────────
+const PIECES=[{shape:[[1,1,1,1]]},{shape:[[1,1],[1,1]]},{shape:[[1,1,1],[0,1,0]]},{shape:[[1,1,1],[1,0,0]]},{shape:[[1,1,1],[0,0,1]]},{shape:[[1,1,0],[0,1,1]]},{shape:[[0,1,1],[1,1,0]]}];
+const PIECE_COLORS=['#d4a935','#c07830','#7a9fd4','#d47a9f','#7abd7a','#9f7ad4','#d47a7a'];
+
+// ── STATE ──────────────────────────────────────────────────────
+const mCanvas=[], mLoaded=new Array(MONUMENTS.length).fill(false), mImages=new Array(MONUMENTS.length).fill(null);
+let board,current,next,score,level,lines,gameLoop;
+let paused=false,gameOver=true,victory=false;
+let currentMIdx=0,totalCleared=0;
+let currentRegion=0;
+let regionMonuments=[];
+let regionMIdx=0;
+let bestScore=parseInt(localStorage.getItem('mondblocs_best')||'0');
+
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+const nc=document.getElementById('next-canvas');
+const nctx=nc.getContext('2d');
+
+// ── CANVAS ─────────────────────────────────────────────────────
+function resizeCanvas(){
+  CELL=computeCell();
+  canvas.width=COLS*CELL; canvas.height=ROWS*CELL;
+  for(let i=0;i<MONUMENTS.length;i++){
+    if(!mCanvas[i]){
+      const oc=document.createElement('canvas');
+      oc.width=COLS*CELL; oc.height=ROWS*CELL;
+      mCanvas[i]=oc;
+    } else {
+      mCanvas[i].width=COLS*CELL; mCanvas[i].height=ROWS*CELL;
+    }
+    paintImageToCanvas(i);
+  }
+}
+
+function paintImageToCanvas(idx){
+  if(!mImages[idx]||!mCanvas[idx]) return;
+  const oc=mCanvas[idx];
+  oc.getContext('2d').drawImage(mImages[idx],0,0,oc.width,oc.height);
+  mLoaded[idx]=true;
+}
+
+function loadMonumentPhoto(idx){
+  if(mImages[idx]){ paintImageToCanvas(idx); return; }
+  const m=MONUMENTS[idx];
+  if(!m.wt) return;
+  const xhr=new XMLHttpRequest();
+  xhr.open('GET',m.wt);
+  xhr.responseType='blob';
+  xhr.onload=function(){
+    const url=URL.createObjectURL(xhr.response);
+    const img=new Image();
+    img.onload=function(){
+      mImages[idx]=img;
+      paintImageToCanvas(idx);
+      if(idx===currentMIdx&&!gameOver) draw();
+    };
+    img.src=url;
+  };
+  xhr.send();
+}
+
+// ── GAME LOGIC ─────────────────────────────────────────────────
+function emptyBoard(){return Array.from({length:ROWS},()=>Array(COLS).fill(0));}
+function rndPiece(){const i=Math.floor(Math.random()*PIECES.length);const p=PIECES[i];return{shape:p.shape.map(r=>[...r]),colorIdx:i,x:Math.floor(COLS/2)-Math.floor(p.shape[0].length/2),y:0};}
+function rotate(s){const r=s[0].length,c=s.length,res=Array.from({length:r},()=>Array(c).fill(0));for(let y=0;y<c;y++)for(let x=0;x<r;x++)res[x][c-1-y]=s[y][x];return res;}
+function valid(p,dx=0,dy=0,sh=null){const s=sh||p.shape;for(let y=0;y<s.length;y++)for(let x=0;x<s[y].length;x++)if(s[y][x]){const nx=p.x+x+dx,ny=p.y+y+dy;if(nx<0||nx>=COLS||ny>=ROWS)return false;if(ny>=0&&board[ny][nx]!==0)return false;}return true;}
+
+function place(){
+  for(let y=0;y<current.shape.length;y++)for(let x=0;x<current.shape[y].length;x++)
+    if(current.shape[y][x]&&current.y+y>=0) board[current.y+y][current.x+x]=current.colorIdx+1;
+  clearLines(); current=next; next=rndPiece(); drawNext();
+  if(!valid(current)) endGame();
+}
+
+function clearLines(){
+  let cl=0;
+  for(let y=ROWS-1;y>=0;y--){if(board[y].every(c=>c!==0)){board.splice(y,1);board.unshift(Array(COLS).fill(0));cl++;y++;}}
+  if(cl>0){
+    score+=[0,100,300,500,800][cl]*level;
+    lines+=cl; level=Math.floor(lines/10)+1;
+    totalCleared+=cl;
+    document.getElementById('score').textContent=score;
+    document.getElementById('level-val').textContent=level;
+    document.getElementById('mprog').style.width=Math.min(100,Math.round(totalCleared/ROWS*100))+'%';
+    resetLoop();
+    if(totalCleared>=ROWS) showVictory();
+  }
+}
+
+function resetLoop(){
+  clearInterval(gameLoop);
+  gameLoop=setInterval(()=>{if(!paused&&!gameOver&&!victory)drop();},Math.max(60,550-(level-1)*80));
+}
+
+function drop(){if(!valid(current,0,1))place();else current.y++;draw();}
+
+function endGame(){
+  clearInterval(gameLoop); gameOver=true;
+  if(score>bestScore){ bestScore=score; localStorage.setItem('mondblocs_best',bestScore); document.getElementById('home-best').textContent='Meilleur : '+bestScore; }
+  // afficher la photo du monument en cours avant le game over
+  const m=MONUMENTS[currentMIdx];
+  const vimg2=document.getElementById('vimg');
+  vimg2.style.opacity='0';
+  const xhr=new XMLHttpRequest();
+  xhr.open('GET',m.wt); xhr.responseType='blob';
+  xhr.onload=function(){
+    vimg2.src=URL.createObjectURL(xhr.response);
+    vimg2.onload=function(){ vimg2.style.opacity='1'; };
+  };
+  xhr.send();
+  document.getElementById('vname').textContent=m.name;
+  document.getElementById('vcountry').textContent=m.country;
+  document.getElementById('vfact').textContent=m.fact;
+  document.getElementById('vbar').style.width='0%';
+  document.getElementById('vnext').textContent='Score : '+score;
+  document.getElementById('victory-overlay').style.display='flex';
+  // après 4s afficher le game over
+  setTimeout(function(){
+    document.getElementById('victory-overlay').style.display='none';
+    document.getElementById('ov-title').textContent=t('gameOver');
+    document.getElementById('ov-sub').textContent='Score : '+score;
+    document.getElementById('ov-btn-start').textContent=t('restart');
+    document.getElementById('game-overlay').style.display='flex';
+  }, 4000);
+}
+
+// ── VICTORY ────────────────────────────────────────────────────
+function showVictory(){
+  victory=true; clearInterval(gameLoop);
+  const m=MONUMENTS[currentMIdx];
+  // charger la vraie photo
+  const vimg=document.getElementById('vimg');
+  vimg.style.opacity='0';
+  const xhr=new XMLHttpRequest();
+  xhr.open('GET',m.wt); xhr.responseType='blob';
+  xhr.onload=function(){
+    vimg.src=URL.createObjectURL(xhr.response);
+    vimg.onload=function(){ vimg.style.opacity='1'; };
+  };
+  xhr.send();
+  document.getElementById('vname').textContent=m.name;
+  document.getElementById('vcountry').textContent=m.country;
+  document.getElementById('vfact').textContent=m.fact;
+  document.getElementById('victory-overlay').style.display='flex';
+  const vbar=document.getElementById('vbar');
+  vbar.style.transition='none'; vbar.style.width='0%';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{vbar.style.transition='width 4s linear';vbar.style.width='100%';}));
+  let count=4;
+  const t=setInterval(()=>{
+    count--;
+    if(count<=0){ clearInterval(t); nextMonument(); }
+    else document.getElementById('vnext').textContent=t('nextIn')+' '+count+t('seconds');
+  },1000);
+}
+
+function nextMonument(){
+  regionMIdx=(regionMIdx+1)%regionMonuments.length;
+  if(regionMIdx===0) level=Math.min(level+1,10);
+  currentMIdx=regionMonuments[regionMIdx];
+  board=emptyBoard(); totalCleared=0; victory=false;
+  document.getElementById('mprog').style.width='0%';
+  updateMonumentPanel();
+  document.getElementById('victory-overlay').style.display='none';
+  current=rndPiece(); next=rndPiece(); drawNext();
+  resetLoop(); draw();
+}
+
+function updateMonumentPanel(){
+  const m=MONUMENTS[currentMIdx];
+  if(!m) return;
+  document.getElementById('mname').textContent=m.name;
+  document.getElementById('mcountry').textContent=m.country;
+  const reg=REGIONS[currentRegion];
+  if(reg) document.getElementById('region-badge').textContent=reg.emoji+' '+(lang==='fr'?reg.fr:reg.en)+' · '+(regionMIdx+1)+'/'+regionMonuments.length;
+}
+
+// ── DRAW ────────────────────────────────────────────────────────
+function drawBoard(){
+  const mc=mCanvas[currentMIdx];
+  if(!mc) return;
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)if(board[y][x]!==0){
+    const ci=board[y][x]-1;
+    ctx.drawImage(mc,x*CELL,y*CELL,CELL,CELL,x*CELL+1,y*CELL+1,CELL-2,CELL-2);
+    ctx.strokeStyle=PIECE_COLORS[ci]+'99'; ctx.lineWidth=1;
+    ctx.strokeRect(x*CELL+1,y*CELL+1,CELL-2,CELL-2);
+    ctx.fillStyle='rgba(255,255,255,0.07)'; ctx.fillRect(x*CELL+1,y*CELL+1,CELL-2,3);
+  }
+}
+
+function drawPieceFull(p,alpha){
+  if(!p) return;
+  const mc=mCanvas[currentMIdx];
+  if(!mc) return;
+  ctx.globalAlpha=alpha||1;
+  for(let y=0;y<p.shape.length;y++)for(let x=0;x<p.shape[y].length;x++)if(p.shape[y][x]){
+    const px=p.x+x,py=p.y+y;
+    if(py>=0){
+      ctx.drawImage(mc,px*CELL,py*CELL,CELL,CELL,px*CELL+1,py*CELL+1,CELL-2,CELL-2);
+      ctx.strokeStyle=PIECE_COLORS[p.colorIdx]; ctx.lineWidth=1.5;
+      ctx.strokeRect(px*CELL+1,py*CELL+1,CELL-2,CELL-2);
+      ctx.fillStyle='rgba(255,255,255,0.10)'; ctx.fillRect(px*CELL+1,py*CELL+1,CELL-2,3);
+    }
+  }
+  ctx.globalAlpha=1;
+}
+
+function draw(){
+  const W=COLS*CELL,H=ROWS*CELL;
+  ctx.fillStyle='#070510'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(212,169,53,0.05)'; ctx.lineWidth=0.5;
+  for(let x=0;x<=COLS;x++){ctx.beginPath();ctx.moveTo(x*CELL,0);ctx.lineTo(x*CELL,H);ctx.stroke();}
+  for(let y=0;y<=ROWS;y++){ctx.beginPath();ctx.moveTo(0,y*CELL);ctx.lineTo(W,y*CELL);ctx.stroke();}
+  if(mCanvas[currentMIdx]&&mLoaded[currentMIdx]){ctx.globalAlpha=0.16;ctx.drawImage(mCanvas[currentMIdx],0,0,W,H);ctx.globalAlpha=1;}
+  drawBoard();
+  if(current){
+    let gy=current.y; while(valid(current,0,gy-current.y+1))gy++;
+    drawPieceFull({...current,y:gy},0.10);
+    drawPieceFull(current,1);
+  }
+}
+
+function drawNext(){
+  nctx.fillStyle='#070510'; nctx.fillRect(0,0,nc.width,nc.height);
+  if(!next) return;
+  const s=next.shape,sz=11,ox=Math.floor((5-s[0].length)/2),oy=Math.floor((4-s.length)/2);
+  const mc=mCanvas[currentMIdx];
+  for(let y=0;y<s.length;y++)for(let x=0;x<s[y].length;x++)if(s[y][x]){
+    const px=(ox+x)*sz+6,py=(oy+y)*sz+6;
+    if(mc&&mLoaded[currentMIdx]) nctx.drawImage(mc,(ox+x)*CELL,(oy+y)*CELL,CELL,CELL,px,py,sz-1,sz-1);
+    else{ nctx.fillStyle=PIECE_COLORS[next.colorIdx]; nctx.fillRect(px,py,sz-1,sz-1); }
+    nctx.strokeStyle=PIECE_COLORS[next.colorIdx]; nctx.lineWidth=1; nctx.strokeRect(px,py,sz-1,sz-1);
+  }
+}
+
+// ── START ───────────────────────────────────────────────────────
+function startRegion(regionIdx){
+  currentRegion=regionIdx;
+  regionMonuments=MONUMENTS.map((m,i)=>m.region===regionIdx?i:-1).filter(i=>i>=0);
+  // mélange aléatoire
+  for(let i=regionMonuments.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [regionMonuments[i],regionMonuments[j]]=[regionMonuments[j],regionMonuments[i]];
+  }
+  regionMIdx=0;
+  currentMIdx=regionMonuments[0];
+  board=emptyBoard(); score=0; level=1; lines=0;
+  paused=false; gameOver=false; victory=false; totalCleared=0;
+  document.getElementById('score').textContent='0';
+  document.getElementById('level-val').textContent='1';
+  document.getElementById('mprog').style.width='0%';
+  document.getElementById('btn-pause').textContent='Pause';
+  document.getElementById('game-overlay').style.display='none';
+  document.getElementById('victory-overlay').style.display='none';
+  document.getElementById('ov-btn-start').textContent=t('start');
+  updateMonumentPanel();
+  current=rndPiece(); next=rndPiece(); drawNext();
+  resetLoop(); draw();
+}
+
+function pressKey(k){
+  if(gameOver||paused||victory) return;
+  if(k==='left'&&valid(current,-1,0)){current.x--;draw();}
+  else if(k==='right'&&valid(current,1,0)){current.x++;draw();}
+  else if(k==='down'){drop();}
+  else if(k==='up'){const r=rotate(current.shape);if(valid(current,0,0,r)){current.shape=r;draw();}}
+  else if(k==='drop'){while(valid(current,0,1))current.y++;place();draw();}
+}
+
+// ── CONTROLS ────────────────────────────────────────────────────
+[['k-left','left'],['k-right','right'],['k-up','up'],['k-down','down']].forEach(([id,k])=>{
+  document.getElementById(id).addEventListener('pointerdown',e=>{e.preventDefault();pressKey(k);});
+});
+document.getElementById('btn-drop').addEventListener('pointerdown',e=>{e.preventDefault();pressKey('drop');});
+
+document.getElementById('ov-btn-start').addEventListener('click',()=>{ if(regionMonuments.length>0) startRegion(currentRegion); });
+
+document.getElementById('btn-play').addEventListener('click',()=>showScreen('regions'));
+
+document.getElementById('btn-regions').addEventListener('click',()=>{
+  clearInterval(gameLoop); paused=true; gameOver=true;
+  showScreen('regions');
+});
+
+document.getElementById('btn-back-home').addEventListener('click',()=>showScreen('home'));
+
+document.querySelectorAll('.region-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const r=parseInt(btn.dataset.region);
+    showScreen('game');
+    startRegion(r);
+  });
+});
+
+document.getElementById('btn-pause').addEventListener('click',()=>{
+  if(gameOver||victory) return;
+  paused=!paused;
+  document.getElementById('btn-pause').textContent=paused?t('resume'):t('pause');
+  const ov=document.getElementById('game-overlay');
+  if(paused){document.getElementById('ov-title').textContent=t('pause');document.getElementById('ov-sub').textContent='';ov.style.display='flex';}
+  else ov.style.display='none';
+});
+
+document.getElementById('btn-about').addEventListener('click',()=>{
+  showScreen('game');
+  document.getElementById('game-overlay').style.display='flex';
+  document.getElementById('ov-title').textContent=t('appTitle');
+  document.getElementById('ov-sub').textContent=t('aboutText');
+  document.getElementById('ov-btn-start').textContent=t('play');
+});
+
+// Swipe
+let tx=0,ty=0;
+canvas.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;e.preventDefault();},{passive:false});
+canvas.addEventListener('touchend',e=>{
+  if(gameOver||paused||victory) return;
+  const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)>Math.abs(dy)){if(dx>20&&valid(current,1,0)){current.x++;draw();}else if(dx<-20&&valid(current,-1,0)){current.x--;draw();}}
+  else{if(dy>20)drop();else if(dy<-20){const r=rotate(current.shape);if(valid(current,0,0,r)){current.shape=r;draw();}}}
+  e.preventDefault();
+},{passive:false});
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft')pressKey('left');
+  else if(e.key==='ArrowRight')pressKey('right');
+  else if(e.key==='ArrowDown')pressKey('down');
+  else if(e.key==='ArrowUp')pressKey('up');
+  else if(e.key===' ')pressKey('drop');
+  if(['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' '].includes(e.key))e.preventDefault();
+});
+
+
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+}
+
+// ── HOME PREVIEW ────────────────────────────────────────────────
+function animatePreview(){
+  const pc=document.getElementById('preview-canvas');
+  pc.width=160; pc.height=200;
+  const pctx=pc.getContext('2d');
+  pctx.fillStyle='#070510'; pctx.fillRect(0,0,160,200);
+  const xhr=new XMLHttpRequest();
+  xhr.open('GET',MONUMENTS[0].wt);
+  xhr.responseType='blob';
+  xhr.onload=function(){
+    const url=URL.createObjectURL(xhr.response);
+    const img=new Image();
+    img.onload=function(){
+      pctx.drawImage(img,0,0,160,200);
+      pctx.globalAlpha=0.5;
+      for(let i=0;i<12;i++){
+        const x=Math.floor(Math.random()*8)*20,y=Math.floor(Math.random()*7+7)*20;
+        pctx.strokeStyle=PIECE_COLORS[i%PIECE_COLORS.length];
+        pctx.lineWidth=1.5; pctx.strokeRect(x+1,y+1,18,18);
+      }
+      pctx.globalAlpha=1;
+    };
+    img.src=url;
+  };
+  xhr.send();
+}
+
+// Monument panel tap → show photo, tap again → next monument
+var photoMode = false;
+document.getElementById('monument-info') && null; // check exists
+document.addEventListener('DOMContentLoaded', function(){});
+// Tap panneau Monument → monument suivant
+document.getElementById('game-right').addEventListener('pointerdown', function(e){
+  if(gameOver||victory||regionMonuments.length===0) return;
+  e.preventDefault();
+  nextMonument();
+});
+
+// Lang toggle
+document.getElementById('btn-lang').addEventListener('click',()=>{
+  lang = lang==='fr'?'en':'fr';
+  localStorage.setItem('mondblocs_lang', lang);
+  applyLang();
+});
+
+
+// ── SETTINGS / NOS APPS ─────────────────────────────────────────
+const APPS_CATEGORIES = [
+  { name:'Géographie', apps:[
+    {id:'6770453028',n:'France GQ'},{id:'6770458593',n:'Europe GQ'},{id:'6770566450',n:'Amér.Nord GQ'},
+    {id:'6770580053',n:'Amér.Sud GQ'},{id:'6770857576',n:'Asie GQ'},{id:'6770836826',n:'Afrique GQ'},
+    {id:'6770848617',n:'Moyen Orient GQ'},{id:'6770826067',n:'Europe Hors UE GQ'},
+    {id:'6761421276',n:'Capitales Europe'},{id:'6762346365',n:'Pays UE'},
+    {id:'6762370541',n:'Etats Unis'},{id:'6767810270',n:'Îles du Monde'},
+    {id:'6762594201',n:'Détroits'},{id:'6762598304',n:'Mers Océans'}
+  ]},
+  { name:'Histoire France', apps:[
+    {id:'6761322546',n:'Rois'},{id:'6761324444',n:'Présidents Fr.'},{id:'6761374601',n:'Maréchaux'},
+    {id:'6761334922',n:'Académie fr.'},{id:'6761335268',n:'Panthéon'},{id:'6768320574',n:'Légion'},
+    {id:'6761709149',n:'Basilique'},{id:'6761363063',n:'Sénat'},{id:'6761361079',n:'Assemblée'},
+    {id:'6762542395',n:'Conquêtes'}
+  ]},
+  { name:'Histoire Monde', apps:[
+    {id:'6763569148',n:'Nobels'},{id:'6768068634',n:'Peintres'},{id:'6770302783',n:'Architectes'},
+    {id:'6770102339',n:'Athlètes'},{id:'6768003416',n:'Explorateurs'},{id:'6762098486',n:'Familles Royales'},
+    {id:'6762208827',n:'Dynasties Royales'},{id:'6762522136',n:'Dynasties Chinoises'},
+    {id:'6762452564',n:'Dynasties Russes'},{id:'6762256169',n:'Présidents US'},
+    {id:'6762263227',n:'Leaders Européens'},{id:'6767492967',n:'Institutions'},
+    {id:'6767273597',n:'Machines Leg.'},{id:'6766260978',n:'Histoire Info'},
+    {id:'6766261703',n:'Micro-Info'}
+  ]},
+  { name:'Culture', apps:[
+    {id:'6761656628',n:'Compositeurs'},{id:'6767135193',n:'Auteurs BD'},
+    {id:'6761993002',n:'Comédie Fr.'},{id:'6761769529',n:'Institut Fr.'},
+    {id:'6761685637',n:'Arbres Fr.'},{id:'6762006105',n:'Iconic Covers'},
+    {id:'6769653710',n:'Légendes Pop'},{id:'6773255479',n:'Rosiers'}
+  ]},
+  { name:'Paris', apps:[
+    {id:'6760890465',n:'Musées'},{id:'6760929391',n:'Théâtres'},{id:'6761293938',n:'Scènes'},
+    {id:'6760751055',n:'Cimetières'},{id:'6763507194',n:'Hôtels Rooftop'}
+  ]},
+  { name:'Monuments', apps:[
+    {id:'6764087562',n:'Aéroports'},{id:'6763857843',n:'Gratte-Ciels'},{id:'6763076110',n:'Paquebots'},
+    {id:'6763069304',n:'Avions'},{id:'6763071567',n:'Voitures'},{id:'6762632868',n:'Trains'},
+    {id:'6762618424',n:'Ponts'},{id:'6762823383',n:'Châteaux Loire'}
+  ]},
+  { name:'Jeux', apps:[
+    {id:'6769310796',n:'App Solitaire'},{id:'6768574161',n:'Tuiles'},{id:'6762091681',n:'Bataille Navale'},
+    {id:'6762076518',n:'Dames'},{id:'6762077646',n:'Flip Board'},{id:'6762558969',n:'ColorCode'},
+    {id:'6762552826',n:'Lexigo'},{id:'1475884625',n:'Toi Ou Moi'}
+  ]},
+  { name:'Kids', apps:[
+    {id:'6773000126',n:'Coloriage'},{id:'6773621753',n:'Mémo Animaux'},{id:'6773656650',n:'Petit Bilingue'},
+    {id:'6773037110',n:'Dinosaures'},{id:'6772937635',n:'Animaux'},{id:'6772548541',n:'Lettres'},
+    {id:'6772546976',n:'Chiffres'},{id:'6772468506',n:'Mahjong'}
+  ]},
+  { name:'Utilitaires', apps:[
+    {id:'6759219383',n:'FreshFood'},{id:'6760126279',n:'Cave'},{id:'6760617965',n:'Restos'},
+    {id:'6761271324',n:'MediSafe'},{id:'1483084001',n:'Belote'},{id:'1481989301',n:'Tarots'}
+  ]}
+];
+
+function buildSettings(){
+  var container = document.getElementById('settings-content');
+  if(!container) return;
+  container.innerHTML = '';
+  APPS_CATEGORIES.forEach(function(cat){
+    var section = document.createElement('div');
+    section.style.cssText = 'margin-bottom:18px;';
+    var title = document.createElement('div');
+    title.style.cssText = 'font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-family:sans-serif;';
+    title.textContent = cat.name;
+    section.appendChild(title);
+    var grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;';
+    cat.apps.forEach(function(app){
+      var cell = document.createElement('div');
+      cell.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;';
+      var img = document.createElement('img');
+      img.style.cssText = 'width:56px;height:56px;border-radius:12px;background:#111;';
+      img.alt = app.n;
+      var label = document.createElement('div');
+      label.style.cssText = 'font-size:9px;color:#888;text-align:center;line-height:1.2;font-family:sans-serif;width:60px;overflow:hidden;';
+      label.textContent = app.n;
+      // JSONP iTunes lookup
+      var cb = 'itcb'+app.id;
+      window[cb] = (function(i){ return function(d){
+        if(d.results&&d.results[0]) i.src=d.results[0].artworkUrl60;
+      }; })(img);
+      var s = document.createElement('script');
+      s.src = 'https://itunes.apple.com/lookup?id='+app.id+'&callback='+cb;
+      document.body.appendChild(s);
+      cell.addEventListener('click', function(){
+        window.location.href = 'https://apps.apple.com/app/id'+app.id;
+      });
+      cell.appendChild(img);
+      cell.appendChild(label);
+      grid.appendChild(cell);
+    });
+    section.appendChild(grid);
+    container.appendChild(section);
+  });
+}
+
+document.getElementById('btn-settings').addEventListener('click', function(){
+  showScreen('settings');
+  buildSettings();
+});
+document.getElementById('btn-close-settings').addEventListener('click', function(){
+  showScreen('home');
+});
+
+// ── BOOT ────────────────────────────────────────────────────────
+resizeCanvas();
+animatePreview();
+applyLang();
+window.addEventListener('resize',()=>{ resizeCanvas(); if(!gameOver&&!paused) draw(); });
+// Précharge toutes les photos en arrière-plan
+for(let i=0;i<MONUMENTS.length;i++) loadMonumentPhoto(i);
+</script>
+</body>
+</html>
